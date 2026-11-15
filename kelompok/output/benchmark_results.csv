@@ -1,0 +1,6 @@
+Protocol,ECP (mJ/pkt),EE (pkt/J),FND (Round),LND (Round),Throughput (Mb),PDR (%)
+Proposed (Prim MST + Mobile Sink),0.44,2274.7,992,1500,136.44,98.62
+Static Kruskal MST (Paper Code),0.449,2224.9,668,1500,131.48,98.51
+LEACH (Clustering),0.615,1626.0,350,985,97.72,96.61
+PEGASIS (Chain Multi-Hop),0.481,2078.0,370,1395,124.78,98.36
+TEEN (Threshold Routing),0.634,1576.9,584,1189,94.68,96.29

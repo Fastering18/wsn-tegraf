@@ -1,0 +1,67 @@
+Type: Flowchart
+Title: Alur Simulasi Optimasi Energi WSN (Prim's MST + Mobile Sink)
+Author: Kelompok WSN
+Date: 2026-11-15
+Direction: TB
+Theme: light
+
+# Flowchart alur sekuensial pipeline kelompok/simulation.py dan kelompok/visualize.py
+Flow {
+  Start: Mulai Pipeline Simulasi WSN
+
+  # Tahap 1: Input & Pra-pemrosesan Data Sensor
+  input_cfg: Input parameter Tabel 1 (30 node, grid 200x200 m, E0 0.5 J, 1500 ronde) [color: blue]
+  gen_raw: Bangkitkan posisi acak (x, y) dan sinyal sensor mentah dengan 5% missing value (NaN) [color: blue]
+  impute: Mean Imputation untuk mengisi nilai sensor NaN [color: blue]
+  clip: Z-Score Clipping untuk membatasi outlier pada rentang mu +/- 2.5 sigma [color: blue]
+  norm: "Min-Max Normalization untuk memetakan data sensor ke rentang [0, 1]" [color: blue]
+
+  # Tahap 2 & 3: Simulasi Multi-Ronde, Konstruksi Graf MST, dan Model Energi Radio
+  init_sim: Inisialisasi ronde r = 1 dan posisi awal Sink di pusat (100, 100) m [color: teal]
+
+  loop Ronde r <= 1500 dan masih ada node hidup? {
+    # Fase A: Pemilihan Cluster Head berbasis Game Theory
+    calc_payoff: Hitung payoff tiap node hidup berdasar rasio sisa energi dan jarak ke Sink [color: purple]
+    select_ch: Pilih 15% node dengan payoff tertinggi sebagai Cluster Head (CH) [color: purple]
+
+    # Fase B: Konstruksi Energy-Aware Prim's MST
+    init_prim: Inisialisasi priority queue Prim dari Virtual Sink (-1) dengan prioritas CH [color: teal]
+    loop Masih ada node hidup yang belum masuk pohon MST? {
+      pick_edge: Pilih edge minimum dengan bobot komposit jarak, sisa energi, dan beban degree [color: teal]
+      add_mst: Tambahkan node target ke pohon MST dan perbarui parent_map serta degree [color: teal]
+    }
+
+    # Fase C: Pembaruan Posisi Mobile Sink
+    move_sink: Pindahkan Mobile Sink ke energy-weighted centroid dari CH yang aktif [color: amber]
+
+    # Fase D: Transmisi Radio First-Order Dissipation Model
+    loop Untuk setiap node pengirim u menuju parent p pada parent_map {
+      if Jarak transmisi d < d0 (87.71 m)? {
+        tx_fs: Hitung dan kurangi energi Tx model Free-Space (d^2) pada node u [color: orange]
+      } else {
+        tx_mp: Hitung dan kurangi energi Tx model Multi-Path (d^4) pada node u [color: orange]
+      }
+
+      if Parent p bukan Sink dan masih hidup? {
+        rx_da: Kurangi energi Rx dan agregasi data (E_DA) pada node relay p [color: orange]
+      }
+
+      if Paket berhasil melewati kanal nirkabel? {
+        pkt_ok: Tambah total paket terkirim (total_packets_delivered) [color: green]
+      }
+    }
+
+    if Ada node dengan sisa energi <= 0 J? {
+      node_dead: Tandai node mati (alive = False) dan catat FND bila kematian pertama [color: red]
+    }
+
+    next_round: Catat histori ronde r (alive_nodes, total_energy) dan lanjutkan r + 1 [color: teal]
+  }
+
+  # Tahap 4: Evaluasi Metrik Akhir & Ekspor Visualisasi
+  calc_metrics: "Hitung metrik akhir: ECP (mJ/pkt), EE (pkt/J), FND, LND, Throughput (Mb), dan PDR (%)" [color: green]
+  output_res: Output tabel benchmark_results.csv dan grafik sekuensial fig1 hingga fig5 [color: green]
+
+  End: Selesai
+}
+
