@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visualisasi Prim MST untuk Jaringan Sensor (WSN)</title>
+    <meta
+      name="description"
+      content="Visualisasi interaktif algoritma Prim Minimum Spanning Tree dan catatan kaitan dengan jurnal optimasi energi WSN."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="#workbench">
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <circle cx="4" cy="14" r="2.2" fill="currentColor" />
+              <circle cx="9" cy="4" r="2.2" fill="currentColor" />
+              <circle cx="14.5" cy="12" r="2.2" fill="currentColor" />
+              <path d="M5.2 12.2L8 5.8M10.4 5.7L13.4 10.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="brand-text">WSN Prim MST</span>
+        </a>
+        <nav class="topnav" aria-label="Navigasi utama">
+          <a href="#workbench">Visualisasi</a>
+          <a href="#journal">Kaitan Jurnal</a>
+          <a href="#benchmarks">Hasil Uji</a>
+          <a href="https://doi.org/10.7717/peerj-cs.2269" target="_blank" rel="noopener noreferrer">Paper DOI</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro-band" id="workbench">
+        <div class="container">
+          <h1>Simulasi langkah demi langkah algoritma Prim MST pada jaringan sensor</h1>
+          <p class="lead">
+            Lihat cara algoritma Prim membentuk pohon rentang minimum dari antrean prioritas, lalu bandingkan bobot jarak biasa dengan bobot berbasis sisa energi baterai.
+          </p>
+        </div>
+      </section>
+
+      <section class="workbench-band" aria-label="Area kerja interaktif Prim MST">
+        <div class="workbench-shell">
+          <aside class="side" aria-label="Pengaturan graf dan algoritma">
+            <div class="side-block">
+              <label class="field-label" for="presetSelect">Topologi graf</label>
+              <select id="presetSelect" class="control-select">
+                <option value="wsn10">WSN 10-node (200x200 m)</option>
+                <option value="wsn30">WSN 30-node (Tabel 1, seed 42)</option>
+                <option value="classic7">Graf 7-node klasik</option>
+                <option value="ref4">Contoh awal (codeeee.py)</option>
+              </select>
+            </div>
+
+            <div class="side-block">
+              <span class="field-label">Model bobot sisi</span>
+              <div class="segmented" role="radiogroup" aria-label="Model bobot sisi">
+                <button type="button" class="seg-btn is-active" data-weight-mode="euclidean" aria-pressed="true">
+                  Jarak biasa
+                </button>
+                <button type="button" class="seg-btn" data-weight-mode="energy" aria-pressed="false">
+                  Sadar energi
+                </button>
+              </div>
+              <p class="field-hint" id="weightHint">
+                Bobot w(u, v) memakai jarak lurus antar-node atau angka manual.
+              </p>
+            </div>
+
+            <div class="side-block">
+              <label class="field-label" for="rootSelect">Simpul awal / Sink (s)</label>
+              <select id="rootSelect" class="control-select"></select>
+            </div>
+
+            <div class="side-block">
+              <span class="field-label">Mode kanvas</span>
+              <div class="tool-grid" role="group" aria-label="Mode interaksi kanvas">
+                <button type="button" class="tool-btn is-active" data-mode="select">Geser / Pilih</button>
+                <button type="button" class="tool-btn" data-mode="add-node">Tambah node</button>
+                <button type="button" class="tool-btn" data-mode="add-edge">Tambah sisi</button>
+                <button type="button" class="tool-btn" data-mode="delete">Hapus</button>
+              </div>
+              <p class="field-hint" id="modeHint">
+                Klik node untuk cek baterai, atau geser posisi node di kanvas.
+              </p>
+            </div>
+
+            <div class="side-block" id="nodeInspectorBlock">
+              <div class="inspector-head">
+                <span class="field-label">Node terpilih</span>
+                <span class="mono-tag" id="selectedNodeTag">Belum ada</span>
+              </div>
+              <div id="nodeInspectorBody" class="inspector-body">
+                <p class="field-hint">Klik salah satu node di kanvas untuk melihat koordinat atau mengatur sisa baterainya (J).</p>
+              </div>
+              <div id="nodeEnergyControl" class="energy-slider-wrap" hidden>
+                <div class="slider-row">
+                  <label for="nodeEnergyRange">Sisa energi</label>
+                  <span class="num" id="nodeEnergyVal">0.50 J</span>
+                </div>
+                <input type="range" id="nodeEnergyRange" min="0.05" max="0.55" step="0.01" value="0.50" />
+              </div>
+            </div>
+
+            <div class="side-actions">
+              <button type="button" class="btn-secondary" id="randomGraphBtn">Graf acak</button>
+              <button type="button" class="btn-ghost" id="resetGraphBtn">Reset awal</button>
+            </div>
+
+            <div class="side-foot">
+              <div class="shortcut-row">
+                <span>Putar / jeda</span>
+                <kbd>Space</kbd>
+              </div>
+              <div class="shortcut-row">
+                <span>Mundur / maju</span>
+                <span><kbd>Left</kbd> <kbd>Right</kbd></span>
+              </div>
+            </div>
+          </aside>
+
+          <div class="canvas-stage">
+            <div class="canvas-toolbar">
+              <div class="legend" aria-label="Keterangan warna graf">
+                <span class="legend-item"><i class="swatch swatch-tree"></i>Masuk MST (T)</span>
+                <span class="legend-item"><i class="swatch swatch-candidate"></i>Sedang dicek</span>
+                <span class="legend-item"><i class="swatch swatch-frontier"></i>Di antrean (PQ)</span>
+                <span class="legend-item"><i class="swatch swatch-rejected"></i>Sudah di T</span>
+              </div>
+              <div class="live-stats">
+                <span>Terkunjungi <strong class="num" id="statVisited">0 / 0</strong></span>
+                <span>Total bobot <strong class="num" id="statWeight">0.00</strong></span>
+                <span>Langkah <strong class="num" id="statStep">0 / 0</strong></span>
+              </div>
+            </div>
+
+            <div class="canvas-frame">
+              <svg
+                id="graphCanvas"
+                viewBox="0 0 760 480"
+                role="img"
+                aria-label="Kanvas graf interaktif untuk algoritma Prim"
+              ></svg>
+              <div id="edgeDialog" class="edge-popover" hidden>
+                <form id="edgeForm">
+                  <label for="edgeWeightInput" id="edgeDialogLabel">Bobot sisi</label>
+                  <div class="edge-form-row">
+                    <input id="edgeWeightInput" type="number" step="0.1" min="0.1" max="999" required />
+                    <button type="submit" class="btn-primary-sm">Simpan</button>
+                    <button type="button" class="btn-ghost-sm" id="edgeCancelBtn">Batal</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div class="playback-bar">
+              <div class="playback-buttons">
+                <button type="button" class="ctrl-btn" id="btnFirst" aria-label="Ke langkah awal" title="Ke awal">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 3v10M13 3L6 8l7 5V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <button type="button" class="ctrl-btn" id="btnPrev" aria-label="Langkah sebelumnya" title="Mundur">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M11 3L5 8l6 5V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <button type="button" class="ctrl-btn ctrl-play" id="btnPlay" aria-label="Putar atau jeda">
+                  <svg id="iconPlay" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M4.5 3.2l8.2 4.8-8.2 4.8V3.2z" />
+                  </svg>
+                  <svg id="iconPause" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" hidden>
+                    <rect x="4" y="3" width="2.8" height="10" rx="0.6" />
+                    <rect x="9.2" y="3" width="2.8" height="10" rx="0.6" />
+                  </svg>
+                </button>
+                <button type="button" class="ctrl-btn" id="btnNext" aria-label="Langkah berikutnya" title="Maju">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M5 3l6 5-6 5V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <button type="button" class="ctrl-btn" id="btnLast" aria-label="Ke langkah akhir" title="Ke akhir">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M13 3v10M3 3l7 5-7 5V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+                  </svg>
+                </button>
+              </div>
+
+              <input
+                type="range"
+                id="stepScrubber"
+                class="scrubber"
+                min="0"
+                max="0"
+                value="0"
+                aria-label="Garis waktu langkah algoritma"
+              />
+
+              <label class="speed-control">
+                <span>Laju</span>
+                <select id="speedSelect" class="speed-select">
+                  <option value="1100">0.5x</option>
+                  <option value="650" selected>1x</option>
+                  <option value="320">2x</option>
+                  <option value="140">4x</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <aside class="inspector-rail" aria-label="Jejak eksekusi dan antrean prioritas">
+            <div class="rail-panel">
+              <h2 class="rail-title">Penjelasan langkah</h2>
+              <p class="step-narration" id="stepNarration">
+                Tekan Putar atau Maju untuk menjalankan algoritma Prim dari simpul awal.
+              </p>
+            </div>
+
+            <div class="rail-panel">
+              <h2 class="rail-title">Pseudocode Prim</h2>
+              <ol class="pseudocode" id="pseudocodeList">
+                <li data-line="0">T = {s}, mst = []</li>
+                <li data-line="1">masukkan sisi (w, s, v) ke PQ</li>
+                <li data-line="2">selama PQ ada isi dan |T| &lt; |V|:</li>
+                <li data-line="3">  (w, u, v) = PQ.ambil_min()</li>
+                <li data-line="4">  jika v sudah di T: lewati sisi</li>
+                <li data-line="5">  tambah v ke T, (u, v, w) ke mst</li>
+                <li data-line="6">  tiap tetangga x dari v luar T:</li>
+                <li data-line="7">    PQ.tambah(w(v, x), v, x)</li>
+                <li data-line="8">kembalikan mst</li>
+              </ol>
+            </div>
+
+            <div class="rail-panel rail-panel-grow">
+              <div class="rail-head-row">
+                <h2 class="rail-title">Antrean prioritas (PQ)</h2>
+                <span class="mono-tag num" id="pqCount">0 item</span>
+              </div>
+              <div class="table-scroll">
+                <table class="pq-table">
+                  <thead>
+                    <tr>
+                      <th>Sisi (u, v)</th>
+                      <th>Status</th>
+                      <th>Bobot</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pqTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="rail-panel">
+              <div class="rail-head-row">
+                <h2 class="rail-title">Sisi MST terpilih</h2>
+                <span class="mono-tag num" id="mstEdgeCount">0 sisi</span>
+              </div>
+              <div class="mst-edge-list" id="mstEdgeList"></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="surface-band" id="journal">
+        <div class="container">
+          <div class="section-head">
+            <h2>Kaitan algoritma Prim dengan paper optimasi energi WSN</h2>
+            <p class="section-sub">
+              Halaman ini merujuk pada artikel Saad dkk. (2024), "Enhancing energy balance in wireless sensor networks through optimized minimum spanning tree" (PeerJ Computer Science 10:e2269).
+            </p>
+          </div>
+
+          <div class="journal-grid">
+            <div class="journal-col">
+              <h3>Isi berkas referensi dan simulasi kelompok</h3>
+              <p>
+                File asli dari penulis paper di folder <code>referensi/</code> berisi contoh Kruskal 4 node (<code>codeeee.py</code>), skrip MATLAB 50 node statis (<code>peerj-cs-10-2269-s003.m</code>), dan lima berkas CSV nilai ECP. Kode bawaan tersebut belum mencakup simulasi banyak ronde.
+              </p>
+              <p>
+                Untuk mempelajari alur kerjanya secara utuh, kelompok membuat <code>kelompok/simulation.py</code> dengan 30 node pada area 200x200 m selama 1.500 ronde (baterai awal 0.5 J, ukuran paket 4.000 bit, jarak ambang 87.71 m).
+              </p>
+            </div>
+
+            <div class="journal-col">
+              <h3>Mengapa bobot sisi memakai sisa energi</h3>
+              <p>
+                Pohon MST dengan jarak biasa selalu memilih garis terpendek, sehingga node di bagian tengah terus dilewati paket dan cepat kehabisan baterai. Pada mode <strong>Sadar energi</strong>, bobot sisi mengikuti rumus di <code>build_energy_aware_prim_mst</code>:
+              </p>
+              <pre class="formula-block"><code>w(v, nxt) = 0.50 * (jarak / d_maks)
+          + 0.35 * (1 - min(E_v, E_nxt) / (1.1 * E_awal))
+          + 0.15 * (derajat(v) / N_hidup)</code></pre>
+              <p>
+                Coba geser turun baterai node N2 di panel kiri. Algoritma Prim akan memutar jalur lewat node lain agar baterai yang hampir habis tidak terus dibebani.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="benchmark-band" id="benchmarks">
+        <div class="container">
+          <div class="section-head">
+            <h2>Hasil simulasi kelompok dan data CSV referensi</h2>
+            <p class="section-sub">
+              Angka berikut diambil dari <code>kelompok/output/benchmark_results.csv</code> (30 node, 1.500 ronde, seed 42) serta lima file CSV di <code>referensi/dataset/</code>.
+            </p>
+          </div>
+
+          <div class="tables-stack">
+            <div class="table-block">
+              <div class="table-header-line">
+                <h3>Perbandingan 5 protokol pada simulasi kelompok</h3>
+                <span class="table-meta">ECP lebih kecil lebih hemat; EE, FND, LND, Throughput, PDR lebih besar lebih baik</span>
+              </div>
+              <div class="table-wrap">
+                <table class="mono-table">
+                  <thead>
+                    <tr>
+                      <th>Protokol</th>
+                      <th>ECP (mJ/pkt)</th>
+                      <th>EE (pkt/J)</th>
+                      <th>FND (Ronde)</th>
+                      <th>LND (Ronde)</th>
+                      <th>Throughput (Mb)</th>
+                      <th>PDR (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="is-highlight">
+                      <td>Proposed (Prim MST + Mobile Sink)</td>
+                      <td>0.440</td>
+                      <td>2274.7</td>
+                      <td>992</td>
+                      <td>1500</td>
+                      <td>136.44</td>
+                      <td>98.62%</td>
+                    </tr>
+                    <tr>
+                      <td>Static Kruskal MST (Kode Paper)</td>
+                      <td>0.449</td>
+                      <td>2224.9</td>
+                      <td>668</td>
+                      <td>1500</td>
+                      <td>131.48</td>
+                      <td>98.51%</td>
+                    </tr>
+                    <tr>
+                      <td>PEGASIS (Chain Multi-Hop)</td>
+                      <td>0.481</td>
+                      <td>2078.0</td>
+                      <td>370</td>
+                      <td>1395</td>
+                      <td>124.78</td>
+                      <td>98.36%</td>
+                    </tr>
+                    <tr>
+                      <td>LEACH (Clustering)</td>
+                      <td>0.615</td>
+                      <td>1626.0</td>
+                      <td>350</td>
+                      <td>985</td>
+                      <td>97.72</td>
+                      <td>96.61%</td>
+                    </tr>
+                    <tr>
+                      <td>TEEN (Threshold Routing)</td>
+                      <td>0.634</td>
+                      <td>1576.9</td>
+                      <td>584</td>
+                      <td>1189</td>
+                      <td>94.68</td>
+                      <td>96.29%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="table-note">
+                Catatan objektif: selisih rata-rata ECP dibanding Kruskal statis relatif kecil (0.440 vs 0.449 mJ/pkt), tetapi kematian node pertama (FND) tertunda dari ronde 668 ke ronde 992 karena beban rute terbagi lebih merata.
+              </p>
+            </div>
+
+            <div class="table-block">
+              <div class="table-header-line">
+                <h3>Data nilai ECP asli dari CSV paper (referensi/dataset/*.csv)</h3>
+                <span class="table-meta">Skala angka ringkas CSV (0.003 sampai 0.012), berbeda satuan dengan model radio fisik</span>
+              </div>
+              <div class="table-wrap">
+                <table class="mono-table">
+                  <thead>
+                    <tr>
+                      <th>Metode (sumber CSV)</th>
+                      <th>ECP Nilai 1</th>
+                      <th>ECP Nilai 2</th>
+                      <th>ECP Nilai 3</th>
+                      <th>Rata-rata</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="is-highlight">
+                      <td>Prim's Algorithm</td>
+                      <td>0.005</td>
+                      <td>0.004</td>
+                      <td>0.003</td>
+                      <td>0.0040</td>
+                    </tr>
+                    <tr>
+                      <td>Data Aggregation</td>
+                      <td>0.006</td>
+                      <td>0.006</td>
+                      <td>0.007</td>
+                      <td>0.0063</td>
+                    </tr>
+                    <tr>
+                      <td>Dynamic Routing</td>
+                      <td>0.007</td>
+                      <td>0.007</td>
+                      <td>0.008</td>
+                      <td>0.0073</td>
+                    </tr>
+                    <tr>
+                      <td>Clustering</td>
+                      <td>0.008</td>
+                      <td>0.008</td>
+                      <td>0.009</td>
+                      <td>0.0083</td>
+                    </tr>
+                    <tr>
+                      <td>Load Balancing</td>
+                      <td>0.010</td>
+                      <td>0.011</td>
+                      <td>0.012</td>
+                      <td>0.0110</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <div>
+          <p class="footer-title">WSN Prim MST</p>
+          <p class="footer-desc">
+            Alat bantu belajar statis untuk tugas Teori Graf. Referensi: Saad dkk. (2024), PeerJ Computer Science 10:e2269.
+          </p>
+        </div>
+        <div class="footer-meta">
+          <span>Sumber repo: <code>referensi/</code> dan <code>kelompok/</code></span>
+          <span>Data input sintetis dengan seed 42</span>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
